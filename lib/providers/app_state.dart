@@ -283,17 +283,42 @@ class AppState extends ChangeNotifier {
     double total = 0.0;
     final start = quincenaStartDate;
     final end = quincenaEndDate;
+    final int daysInQuincena = end.difference(start).inDays + 1;
     
     for (var s in _subscriptions) {
       if (!s.isActive) continue;
       
       if (s.frequency == SubscriptionFrequency.daily) {
-        total += s.amount * 15; // 15 days in a quincena
+        total += s.amount * daysInQuincena;
+      } else if (s.frequency == SubscriptionFrequency.weekly) {
+        int occurrences = 0;
+        DateTime temp = start;
+        while (temp.isBefore(end) || temp.isAtSameMomentAs(end)) {
+          if (temp.weekday == s.dueDate) {
+            occurrences++;
+          }
+          temp = temp.add(const Duration(days: 1));
+        }
+        total += s.amount * occurrences;
       } else if (s.frequency == SubscriptionFrequency.fortnightly) {
-        total += s.amount; // once per quincena
+        total += s.amount;
       } else if (s.frequency == SubscriptionFrequency.monthly) {
-        if (s.dueDate >= start.day && s.dueDate <= end.day) {
-          total += s.amount;
+        if (s.dueDate == 32) {
+          // "Fin de mes" is always in the second quincena of the month (starts day 16)
+          if (start.day >= 16) {
+            total += s.amount;
+          }
+        } else {
+          // Handle cases where the month has fewer days than the s.dueDate (e.g. Feb 28, but dueDate is 30)
+          int effectiveDueDate = s.dueDate;
+          final lastDayOfMonth = DateTime(start.year, start.month + 1, 0).day;
+          if (effectiveDueDate > lastDayOfMonth) {
+            effectiveDueDate = lastDayOfMonth;
+          }
+          
+          if (effectiveDueDate >= start.day && effectiveDueDate <= end.day) {
+            total += s.amount;
+          }
         }
       }
     }

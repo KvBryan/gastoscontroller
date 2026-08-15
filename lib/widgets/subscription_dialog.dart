@@ -160,6 +160,13 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                         if (selected) {
                           setState(() {
                             _frequency = freq;
+                            if (freq == SubscriptionFrequency.weekly) {
+                              if (_dueDate < 1 || _dueDate > 7) _dueDate = 1;
+                            } else if (freq == SubscriptionFrequency.fortnightly) {
+                              if (_dueDate < 1 || _dueDate > 15) _dueDate = 1;
+                            } else if (freq == SubscriptionFrequency.monthly) {
+                              if (_dueDate < 1 || _dueDate > 32) _dueDate = 1;
+                            }
                           });
                         }
                       },
@@ -182,9 +189,12 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                 TextFormField(
                   controller: _amountController,
                   decoration: InputDecoration(
-                    labelText: _frequency == SubscriptionFrequency.daily 
-                        ? 'Monto Diario'
-                        : (_frequency == SubscriptionFrequency.fortnightly ? 'Monto Quincenal' : 'Monto Mensual'),
+                    labelText: () {
+                      if (_frequency == SubscriptionFrequency.daily) return 'Monto Diario';
+                      if (_frequency == SubscriptionFrequency.weekly) return 'Monto Semanal';
+                      if (_frequency == SubscriptionFrequency.fortnightly) return 'Monto Quincenal';
+                      return 'Monto Mensual';
+                    }(),
                     prefixText: '${widget.defaultCurrency} ',
                     hintText: '0.00',
                   ),
@@ -208,9 +218,11 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                     children: [
                       Expanded(
                         child: Text(
-                          _frequency == SubscriptionFrequency.fortnightly
-                              ? 'Día de cobro quincenal:'
-                              : 'Día de cobro mensual:',
+                          () {
+                            if (_frequency == SubscriptionFrequency.weekly) return 'Día de cobro semanal:';
+                            if (_frequency == SubscriptionFrequency.fortnightly) return 'Día de cobro quincenal:';
+                            return 'Día de cobro mensual:';
+                          }(),
                           style: TextStyle(
                             fontSize: 13,
                             color: theme.textTheme.bodyLarge?.color?.withOpacity(0.8),
@@ -218,23 +230,66 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                         ),
                       ),
                       DropdownButton<int>(
-                        value: _frequency == SubscriptionFrequency.fortnightly && _dueDate > 15 ? 1 : _dueDate,
+                        value: () {
+                          if (_frequency == SubscriptionFrequency.weekly) {
+                            return (_dueDate >= 1 && _dueDate <= 7) ? _dueDate : 1;
+                          } else if (_frequency == SubscriptionFrequency.fortnightly) {
+                            return (_dueDate >= 1 && _dueDate <= 15) ? _dueDate : 1;
+                          } else {
+                            return (_dueDate >= 1 && _dueDate <= 32) ? _dueDate : 1;
+                          }
+                        }(),
                         dropdownColor: theme.cardColor,
                         underline: const SizedBox(),
                         borderRadius: BorderRadius.circular(8),
                         alignment: Alignment.centerRight,
-                        items: List.generate(
-                          _frequency == SubscriptionFrequency.fortnightly ? 15 : 31,
-                          (index) => index + 1
-                        ).map((day) {
-                          return DropdownMenuItem<int>(
-                            value: day,
-                            child: Text(
-                              'Día $day',
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                          );
-                        }).toList(),
+                        items: () {
+                          if (_frequency == SubscriptionFrequency.weekly) {
+                            const weekdays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+                            return List.generate(7, (index) {
+                              final dayNum = index + 1;
+                              return DropdownMenuItem<int>(
+                                value: dayNum,
+                                child: Text(
+                                  weekdays[index],
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              );
+                            });
+                          } else if (_frequency == SubscriptionFrequency.fortnightly) {
+                            return List.generate(15, (index) {
+                              final dayNum = index + 1;
+                              return DropdownMenuItem<int>(
+                                value: dayNum,
+                                child: Text(
+                                  'Día $dayNum',
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              );
+                            });
+                          } else {
+                            final list = List.generate(31, (index) {
+                              final dayNum = index + 1;
+                              return DropdownMenuItem<int>(
+                                value: dayNum,
+                                child: Text(
+                                  'Día $dayNum',
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              );
+                            });
+                            list.add(
+                              const DropdownMenuItem<int>(
+                                value: 32,
+                                child: Text(
+                                  'Fin de mes',
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            );
+                            return list;
+                          }
+                        }(),
                         onChanged: (val) {
                           if (val != null) {
                             setState(() {

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 enum SubscriptionFrequency {
   daily,
+  weekly,      // semanal
   fortnightly, // quincenal
   monthly,
 }
@@ -11,6 +12,8 @@ extension SubscriptionFrequencyExtension on SubscriptionFrequency {
     switch (this) {
       case SubscriptionFrequency.daily:
         return 'Diario';
+      case SubscriptionFrequency.weekly:
+        return 'Semanal';
       case SubscriptionFrequency.fortnightly:
         return 'Quincenal';
       case SubscriptionFrequency.monthly:

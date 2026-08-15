@@ -587,18 +587,40 @@ class BudgetScreen extends StatelessWidget {
                                 ),
                               ),
                               subtitle: Text(
-                                sub.frequency == SubscriptionFrequency.daily
-                                    ? 'Cobro: Todos los días'
-                                    : (sub.frequency == SubscriptionFrequency.fortnightly
-                                        ? 'Cobro: Día ${sub.dueDate} de cada quincena'
-                                        : 'Cobro: Día ${sub.dueDate} de cada mes'),
+                                () {
+                                  if (sub.frequency == SubscriptionFrequency.daily) {
+                                    return 'Cobro: Todos los días';
+                                  } else if (sub.frequency == SubscriptionFrequency.weekly) {
+                                    const weekdays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+                                    final weekdayName = (sub.dueDate >= 1 && sub.dueDate <= 7) ? weekdays[sub.dueDate - 1] : 'Lunes';
+                                    return 'Cobro: Cada $weekdayName';
+                                  } else if (sub.frequency == SubscriptionFrequency.fortnightly) {
+                                    return 'Cobro: Día ${sub.dueDate} de cada quincena';
+                                  } else {
+                                    return sub.dueDate == 32 
+                                        ? 'Cobro: Fin de mes' 
+                                        : 'Cobro: Día ${sub.dueDate} de cada mes';
+                                  }
+                                }(),
                                 style: TextStyle(fontSize: 10, color: theme.hintColor),
                               ),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    '${sub.amount.toStringAsFixed(2)} ${sub.currency} / ${sub.frequency == SubscriptionFrequency.daily ? 'd' : (sub.frequency == SubscriptionFrequency.fortnightly ? 'q' : 'm')}',
+                                    () {
+                                      final String freqLabel;
+                                      if (sub.frequency == SubscriptionFrequency.daily) {
+                                        freqLabel = 'd';
+                                      } else if (sub.frequency == SubscriptionFrequency.weekly) {
+                                        freqLabel = 'sem';
+                                      } else if (sub.frequency == SubscriptionFrequency.fortnightly) {
+                                        freqLabel = 'q';
+                                      } else {
+                                        freqLabel = 'm';
+                                      }
+                                      return '${sub.amount.toStringAsFixed(2)} ${sub.currency} / $freqLabel';
+                                    }(),
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
