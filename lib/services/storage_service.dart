@@ -12,9 +12,21 @@ class StorageService {
   static const String _keyGoals = 'savings_goals';
   static const String _keySubscriptions = 'subscriptions';
   static const String _keyDarkMode = 'is_dark_mode';
+  static const String _keyUseIncomeAsBudget = 'use_income_as_budget';
 
   static Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
+  }
+
+  // Use Income as Budget Preference
+  static bool getUseIncomeAsBudget() {
+    if (_prefs == null) return true; // Default to true
+    return _prefs!.getBool(_keyUseIncomeAsBudget) ?? true;
+  }
+
+  static Future<void> saveUseIncomeAsBudget(bool useIncome) async {
+    if (_prefs == null) return;
+    await _prefs!.setBool(_keyUseIncomeAsBudget, useIncome);
   }
 
   // Transactions

@@ -88,6 +88,8 @@ class BudgetScreen extends StatelessWidget {
   void _showAddFundsDialog(BuildContext context, AppState state, GoalModel goal) {
     final controller = TextEditingController();
     final theme = Theme.of(context);
+    final availableSavings = state.currentQuincenaAvailableSavings;
+    final hasDeficit = state.remainingQuincenaBudget < 0;
     
     showDialog(
       context: context,
@@ -102,25 +104,103 @@ class BudgetScreen extends StatelessWidget {
           'Aportar a: ${goal.title}',
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Esta aportación se registrará como un egreso automático en tu historial.',
-              style: TextStyle(fontSize: 12, color: theme.hintColor),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              autofocus: true,
-              decoration: InputDecoration(
-                labelText: 'Monto a ahorrar',
-                prefixText: '${goal.currency} ',
-              ),
-            ),
-          ],
+        content: StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Esta aportación se registrará como un egreso automático en tu historial.',
+                  style: TextStyle(fontSize: 11, color: theme.hintColor),
+                ),
+                const SizedBox(height: 12),
+                
+                // Available balance indicator / Deficit warning
+                if (hasDeficit) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFB07D7D).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, size: 14, color: Color(0xFFB07D7D)),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Alerta: Tu presupuesto está en déficit de ${(-state.remainingQuincenaBudget).toStringAsFixed(2)} ${state.currency}.',
+                            style: const TextStyle(fontSize: 10, color: Color(0xFFB07D7D), fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ] else if (availableSavings > 0) ...[
+                  InkWell(
+                    onTap: () {
+                      controller.text = availableSavings.toStringAsFixed(2);
+                    },
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6F8F72).withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFF6F8F72).withOpacity(0.2), width: 0.5),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.savings_rounded, size: 14, color: Color(0xFF6F8F72)),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Saldo libre quincenal disponible: ${availableSavings.toStringAsFixed(2)} ${state.currency} (Toca para usar)',
+                              style: const TextStyle(fontSize: 10, color: Color(0xFF6F8F72), fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ] else ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: theme.dividerColor.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded, size: 14, color: theme.hintColor),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'No tienes saldo libre disponible en esta quincena.',
+                            style: TextStyle(fontSize: 10, color: theme.hintColor),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                
+                TextField(
+                  controller: controller,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'Monto a ahorrar',
+                    prefixText: '${goal.currency} ',
+                  ),
+                ),
+              ],
+            );
+          }
         ),
         actions: [
           TextButton(
@@ -225,8 +305,20 @@ class BudgetScreen extends StatelessWidget {
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: theme.primaryColor),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.edit_rounded, size: 16),
-                              onPressed: () => _showBudgetDialog(context, state),
+                              icon: Icon(
+                                Icons.edit_rounded, 
+                                size: 16,
+                                color: state.useIncomeAsBudget ? theme.hintColor.withOpacity(0.5) : theme.textTheme.bodyLarge?.color,
+                              ),
+                              onPressed: state.useIncomeAsBudget 
+                                  ? () {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('El presupuesto está vinculado a tus ingresos quincenales. Desactiva la vinculación abajo para editarlo manualmente.'),
+                                        ),
+                                      );
+                                    }
+                                  : () => _showBudgetDialog(context, state),
                               style: IconButton.styleFrom(
                                 backgroundColor: theme.scaffoldBackgroundColor,
                                 padding: const EdgeInsets.all(8),
@@ -287,6 +379,33 @@ class BudgetScreen extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                        const Divider(height: 24, thickness: 0.5),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Vincular con mis ingresos',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                  ),
+                                  Text(
+                                    'Usa el sueldo quincenal como límite de presupuesto.',
+                                    style: TextStyle(fontSize: 10, color: theme.hintColor),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Switch.adaptive(
+                              value: state.useIncomeAsBudget,
+                              activeColor: theme.primaryColor,
+                              onChanged: (val) {
+                                state.setUseIncomeAsBudget(val);
+                              },
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -330,6 +449,60 @@ class BudgetScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
+
+                  // Balance connection banner for Goals
+                  () {
+                    final availableSavings = state.currentQuincenaAvailableSavings;
+                    final hasDeficit = state.remainingQuincenaBudget < 0;
+                    
+                    if (availableSavings > 0 && !hasDeficit) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6F8F72).withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF6F8F72).withOpacity(0.3), width: 0.5),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.check_circle_outline_rounded, color: Color(0xFF6F8F72), size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '¡Excelente! Tienes ${availableSavings.toStringAsFixed(2)} ${state.currency} de saldo libre esta quincena para aportar a tus metas.',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    } else {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFB07D7D).withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFB07D7D).withOpacity(0.3), width: 0.5),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, color: Color(0xFFB07D7D), size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                hasDeficit 
+                                    ? '⚠️ Presupuesto quincenal excedido en ${(-state.remainingQuincenaBudget).toStringAsFixed(2)} ${state.currency}. Se recomienda no aportar a metas hasta equilibrar tu saldo.'
+                                    : '⚠️ No tienes saldo libre disponible en esta quincena. Registra ingresos o reduce gastos antes de aportar a tus metas.',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFFB07D7D)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                  }(),
 
                   // Savings Goals List
                   if (state.goals.isEmpty)
@@ -590,6 +763,8 @@ class BudgetScreen extends StatelessWidget {
                                 () {
                                   if (sub.frequency == SubscriptionFrequency.daily) {
                                     return 'Cobro: Todos los días';
+                                  } else if (sub.frequency == SubscriptionFrequency.everyTwoDays) {
+                                    return 'Cobro: Cada 2 días';
                                   } else if (sub.frequency == SubscriptionFrequency.weekly) {
                                     const weekdays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
                                     final weekdayName = (sub.dueDate >= 1 && sub.dueDate <= 7) ? weekdays[sub.dueDate - 1] : 'Lunes';
@@ -612,6 +787,8 @@ class BudgetScreen extends StatelessWidget {
                                       final String freqLabel;
                                       if (sub.frequency == SubscriptionFrequency.daily) {
                                         freqLabel = 'd';
+                                      } else if (sub.frequency == SubscriptionFrequency.everyTwoDays) {
+                                        freqLabel = '2d';
                                       } else if (sub.frequency == SubscriptionFrequency.weekly) {
                                         freqLabel = 'sem';
                                       } else if (sub.frequency == SubscriptionFrequency.fortnightly) {

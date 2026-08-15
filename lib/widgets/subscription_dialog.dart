@@ -58,7 +58,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
         title: _titleController.text.trim(),
         amount: amount,
         categoryId: _categoryId,
-        dueDate: _frequency == SubscriptionFrequency.daily ? 1 : _dueDate,
+        dueDate: (_frequency == SubscriptionFrequency.daily || _frequency == SubscriptionFrequency.everyTwoDays) ? 1 : _dueDate,
         notes: _notesController.text.trim(),
         isActive: widget.subscription?.isActive ?? true,
         currency: widget.subscription?.currency ?? widget.defaultCurrency,
@@ -191,6 +191,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                   decoration: InputDecoration(
                     labelText: () {
                       if (_frequency == SubscriptionFrequency.daily) return 'Monto Diario';
+                      if (_frequency == SubscriptionFrequency.everyTwoDays) return 'Monto Cada 2 Días';
                       if (_frequency == SubscriptionFrequency.weekly) return 'Monto Semanal';
                       if (_frequency == SubscriptionFrequency.fortnightly) return 'Monto Quincenal';
                       return 'Monto Mensual';
@@ -212,8 +213,8 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                 ),
                 const SizedBox(height: 16),
 
-                // Due Day selector (Only show for non-daily)
-                if (_frequency != SubscriptionFrequency.daily) ...[
+                // Due Day selector (Only show for weekly, fortnightly, monthly)
+                if (_frequency != SubscriptionFrequency.daily && _frequency != SubscriptionFrequency.everyTwoDays) ...[
                   Row(
                     children: [
                       Expanded(

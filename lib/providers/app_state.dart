@@ -13,14 +13,16 @@ class AppState extends ChangeNotifier {
   List<GoalModel> _goals = [];
   List<SubscriptionModel> _subscriptions = [];
   bool _isDarkMode = true;
+  bool _useIncomeAsBudget = true;
 
   // Getters
   List<TransactionModel> get transactions => _transactions;
-  double get budget => _budget;
+  double get budget => _useIncomeAsBudget ? (currentQuincenaIncomeTotal > 0 ? currentQuincenaIncomeTotal : _budget) : _budget;
   String get currency => _currency;
   List<GoalModel> get goals => _goals;
   List<SubscriptionModel> get subscriptions => _subscriptions;
   bool get isDarkMode => _isDarkMode;
+  bool get useIncomeAsBudget => _useIncomeAsBudget;
 
   AppState() {
     _loadFromStorage();
@@ -33,6 +35,7 @@ class AppState extends ChangeNotifier {
     _goals = StorageService.getGoals();
     _subscriptions = StorageService.getSubscriptions();
     _isDarkMode = StorageService.isDarkMode();
+    _useIncomeAsBudget = StorageService.getUseIncomeAsBudget();
     notifyListeners();
   }
 
@@ -81,6 +84,12 @@ class AppState extends ChangeNotifier {
   void setBudget(double amount) {
     _budget = amount;
     StorageService.saveBudget(amount);
+    notifyListeners();
+  }
+
+  void setUseIncomeAsBudget(bool value) {
+    _useIncomeAsBudget = value;
+    StorageService.saveUseIncomeAsBudget(value);
     notifyListeners();
   }
 
@@ -256,6 +265,11 @@ class AppState extends ChangeNotifier {
     return currentQuincenaTransactions
         .where((tx) => tx.isIncome)
         .fold(0.0, (sum, tx) => sum + tx.amount);
+  }
+
+  double get currentQuincenaAvailableSavings {
+    final net = currentQuincenaIncomeTotal - currentQuincenaExpensesTotal;
+    return net > 0 ? net : 0.0;
   }
 
   double get remainingQuincenaBudget {
