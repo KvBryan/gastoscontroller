@@ -2,7 +2,6 @@ import 'dart:convert';
 
 enum SubscriptionFrequency {
   daily,
-  everyTwoDays, // cada dos días
   weekly,       // semanal
   fortnightly,  // quincenal
   monthly,
@@ -13,8 +12,6 @@ extension SubscriptionFrequencyExtension on SubscriptionFrequency {
     switch (this) {
       case SubscriptionFrequency.daily:
         return 'Diario';
-      case SubscriptionFrequency.everyTwoDays:
-        return 'Cada 2 días';
       case SubscriptionFrequency.weekly:
         return 'Semanal';
       case SubscriptionFrequency.fortnightly:
@@ -39,7 +36,8 @@ class SubscriptionModel {
   final String title;
   final double amount;
   final String categoryId;
-  final int dueDate; // Day of the month or frequency parameter (e.g. day of quincena 1-15)
+  final int dueDate; // Day of the month or frequency parameter
+  final List<int> weekdays; // Weekdays selected (1 = Lunes, 7 = Domingo)
   final String notes;
   final bool isActive;
   final String currency;
@@ -51,6 +49,7 @@ class SubscriptionModel {
     required this.amount,
     required this.categoryId,
     required this.dueDate,
+    this.weekdays = const [],
     this.notes = '',
     this.isActive = true,
     required this.currency,
@@ -64,6 +63,7 @@ class SubscriptionModel {
       'amount': amount,
       'categoryId': categoryId,
       'dueDate': dueDate,
+      'weekdays': weekdays,
       'notes': notes,
       'isActive': isActive,
       'currency': currency,
@@ -78,6 +78,7 @@ class SubscriptionModel {
       amount: (map['amount'] ?? 0.0).toDouble(),
       categoryId: map['categoryId'] ?? 'other',
       dueDate: map['dueDate'] ?? 1,
+      weekdays: List<int>.from(map['weekdays'] ?? []),
       notes: map['notes'] ?? '',
       isActive: map['isActive'] ?? true,
       currency: map['currency'] ?? '\$',

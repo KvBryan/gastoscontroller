@@ -307,8 +307,9 @@ class AppState extends ChangeNotifier {
       } else if (s.frequency == SubscriptionFrequency.weekly) {
         int occurrences = 0;
         DateTime temp = start;
+        final targetDays = s.weekdays.isNotEmpty ? s.weekdays : [s.dueDate];
         while (temp.isBefore(end) || temp.isAtSameMomentAs(end)) {
-          if (temp.weekday == s.dueDate) {
+          if (targetDays.contains(temp.weekday)) {
             occurrences++;
           }
           temp = temp.add(const Duration(days: 1));

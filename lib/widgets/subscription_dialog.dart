@@ -23,6 +23,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
   late TextEditingController _amountController;
   late TextEditingController _notesController;
   late int _dueDate;
+  late List<int> _selectedWeekdays;
   late String _categoryId;
   late SubscriptionFrequency _frequency;
 
@@ -37,6 +38,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
     );
     _notesController = TextEditingController(text: sub?.notes ?? '');
     _dueDate = sub?.dueDate ?? 1;
+    _selectedWeekdays = sub != null ? List<int>.from(sub.weekdays) : [];
     _categoryId = sub?.categoryId ?? CategoryModel.expenseCategories.first.id;
     _frequency = sub?.frequency ?? SubscriptionFrequency.monthly;
   }
@@ -58,7 +60,8 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
         title: _titleController.text.trim(),
         amount: amount,
         categoryId: _categoryId,
-        dueDate: (_frequency == SubscriptionFrequency.daily || _frequency == SubscriptionFrequency.everyTwoDays) ? 1 : _dueDate,
+        dueDate: _frequency == SubscriptionFrequency.daily ? 1 : _dueDate,
+        weekdays: _frequency == SubscriptionFrequency.weekly ? _selectedWeekdays : [],
         notes: _notesController.text.trim(),
         isActive: widget.subscription?.isActive ?? true,
         currency: widget.subscription?.currency ?? widget.defaultCurrency,
@@ -161,7 +164,9 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                           setState(() {
                             _frequency = freq;
                             if (freq == SubscriptionFrequency.weekly) {
-                              if (_dueDate < 1 || _dueDate > 7) _dueDate = 1;
+                              if (_selectedWeekdays.isEmpty) {
+                                _selectedWeekdays = [DateTime.now().weekday];
+                              }
                             } else if (freq == SubscriptionFrequency.fortnightly) {
                               if (_dueDate < 1 || _dueDate > 15) _dueDate = 1;
                             } else if (freq == SubscriptionFrequency.monthly) {
@@ -191,7 +196,6 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                   decoration: InputDecoration(
                     labelText: () {
                       if (_frequency == SubscriptionFrequency.daily) return 'Monto Diario';
-                      if (_frequency == SubscriptionFrequency.everyTwoDays) return 'Monto Cada 2 Días';
                       if (_frequency == SubscriptionFrequency.weekly) return 'Monto Semanal';
                       if (_frequency == SubscriptionFrequency.fortnightly) return 'Monto Quincenal';
                       return 'Monto Mensual';
@@ -213,95 +217,136 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                 ),
                 const SizedBox(height: 16),
 
-                // Due Day selector (Only show for weekly, fortnightly, monthly)
-                if (_frequency != SubscriptionFrequency.daily && _frequency != SubscriptionFrequency.everyTwoDays) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          () {
-                            if (_frequency == SubscriptionFrequency.weekly) return 'Día de cobro semanal:';
-                            if (_frequency == SubscriptionFrequency.fortnightly) return 'Día de cobro quincenal:';
-                            return 'Día de cobro mensual:';
-                          }(),
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: theme.textTheme.bodyLarge?.color?.withOpacity(0.8),
-                          ),
-                        ),
-                      ),
-                      DropdownButton<int>(
-                        value: () {
-                          if (_frequency == SubscriptionFrequency.weekly) {
-                            return (_dueDate >= 1 && _dueDate <= 7) ? _dueDate : 1;
-                          } else if (_frequency == SubscriptionFrequency.fortnightly) {
-                            return (_dueDate >= 1 && _dueDate <= 15) ? _dueDate : 1;
-                          } else {
-                            return (_dueDate >= 1 && _dueDate <= 32) ? _dueDate : 1;
-                          }
-                        }(),
-                        dropdownColor: theme.cardColor,
-                        underline: const SizedBox(),
-                        borderRadius: BorderRadius.circular(8),
-                        alignment: Alignment.centerRight,
-                        items: () {
-                          if (_frequency == SubscriptionFrequency.weekly) {
-                            const weekdays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-                            return List.generate(7, (index) {
-                              final dayNum = index + 1;
-                              return DropdownMenuItem<int>(
-                                value: dayNum,
-                                child: Text(
-                                  weekdays[index],
-                                  style: const TextStyle(fontSize: 13),
-                                ),
-                              );
-                            });
-                          } else if (_frequency == SubscriptionFrequency.fortnightly) {
-                            return List.generate(15, (index) {
-                              final dayNum = index + 1;
-                              return DropdownMenuItem<int>(
-                                value: dayNum,
-                                child: Text(
-                                  'Día $dayNum',
-                                  style: const TextStyle(fontSize: 13),
-                                ),
-                              );
-                            });
-                          } else {
-                            final list = List.generate(31, (index) {
-                              final dayNum = index + 1;
-                              return DropdownMenuItem<int>(
-                                value: dayNum,
-                                child: Text(
-                                  'Día $dayNum',
-                                  style: const TextStyle(fontSize: 13),
-                                ),
-                              );
-                            });
-                            list.add(
-                              const DropdownMenuItem<int>(
-                                value: 32,
-                                child: Text(
-                                  'Fin de mes',
-                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                // Due Day/Weekdays selector
+                if (_frequency != SubscriptionFrequency.daily) ...[
+                  if (_frequency == SubscriptionFrequency.weekly) ...[
+                    const Text(
+                      'Días de cobro semanal (estilo alarma):',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 8),
+                    StatefulBuilder(
+                      builder: (context, setDialogState) {
+                        const weekdaysNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+                        return Wrap(
+                          spacing: 6.0,
+                          runSpacing: 6.0,
+                          children: List.generate(7, (index) {
+                            final dayNum = index + 1;
+                            final isSelected = _selectedWeekdays.contains(dayNum);
+                            return FilterChip(
+                              label: Text(
+                                weekdaysNames[index],
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                  color: isSelected 
+                                      ? theme.scaffoldBackgroundColor 
+                                      : theme.textTheme.bodyLarge?.color,
                                 ),
                               ),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                setState(() {
+                                  if (selected) {
+                                    _selectedWeekdays.add(dayNum);
+                                  } else {
+                                    if (_selectedWeekdays.length > 1) {
+                                      _selectedWeekdays.remove(dayNum);
+                                    }
+                                  }
+                                });
+                                setDialogState(() {});
+                              },
+                              showCheckmark: false,
+                              selectedColor: theme.primaryColor,
+                              backgroundColor: theme.cardColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              side: BorderSide(
+                                color: isSelected ? theme.primaryColor : theme.dividerColor,
+                                width: 0.5,
+                              ),
                             );
-                            return list;
-                          }
-                        }(),
-                        onChanged: (val) {
-                          if (val != null) {
-                            setState(() {
-                              _dueDate = val;
-                            });
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
+                          }),
+                        );
+                      }
+                    ),
+                    const SizedBox(height: 16),
+                  ] else ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _frequency == SubscriptionFrequency.fortnightly
+                                ? 'Día de cobro quincenal:'
+                                : 'Día de cobro mensual:',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: theme.textTheme.bodyLarge?.color?.withOpacity(0.8),
+                            ),
+                          ),
+                        ),
+                        DropdownButton<int>(
+                          value: () {
+                            if (_frequency == SubscriptionFrequency.fortnightly) {
+                              return (_dueDate >= 1 && _dueDate <= 15) ? _dueDate : 1;
+                            } else {
+                              return (_dueDate >= 1 && _dueDate <= 32) ? _dueDate : 1;
+                            }
+                          }(),
+                          dropdownColor: theme.cardColor,
+                          underline: const SizedBox(),
+                          borderRadius: BorderRadius.circular(8),
+                          alignment: Alignment.centerRight,
+                          items: () {
+                            if (_frequency == SubscriptionFrequency.fortnightly) {
+                              return List.generate(15, (index) {
+                                final dayNum = index + 1;
+                                return DropdownMenuItem<int>(
+                                  value: dayNum,
+                                  child: Text(
+                                    'Día $dayNum',
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                );
+                              });
+                            } else {
+                              final list = List.generate(31, (index) {
+                                final dayNum = index + 1;
+                                return DropdownMenuItem<int>(
+                                  value: dayNum,
+                                  child: Text(
+                                    'Día $dayNum',
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                );
+                              });
+                              list.add(
+                                const DropdownMenuItem<int>(
+                                  value: 32,
+                                  child: Text(
+                                    'Fin de mes',
+                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              );
+                              return list;
+                            }
+                          }(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _dueDate = val;
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                 ],
 
                 // Category Selection
