@@ -764,7 +764,9 @@ class BudgetScreen extends StatelessWidget {
                                   if (sub.frequency == SubscriptionFrequency.daily) {
                                     return 'Cobro: Todos los días';
                                   } else if (sub.frequency == SubscriptionFrequency.weekly) {
-                                    if (sub.weekdays.isNotEmpty) {
+                                    if (sub.weekdays.length == 7) {
+                                      return 'Cobro: Todos los días';
+                                    } else if (sub.weekdays.isNotEmpty) {
                                       const weekdaysNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
                                       final daysStr = sub.weekdays.map((d) => weekdaysNames[d - 1]).join(', ');
                                       return 'Cobro: Cada $daysStr';

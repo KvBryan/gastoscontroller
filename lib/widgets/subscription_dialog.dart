@@ -24,6 +24,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
   late TextEditingController _notesController;
   late int _dueDate;
   late List<int> _selectedWeekdays;
+  late bool _allWeekdays;
   late String _categoryId;
   late SubscriptionFrequency _frequency;
 
@@ -39,6 +40,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
     _notesController = TextEditingController(text: sub?.notes ?? '');
     _dueDate = sub?.dueDate ?? 1;
     _selectedWeekdays = sub != null ? List<int>.from(sub.weekdays) : [];
+    _allWeekdays = _selectedWeekdays.length == 7;
     _categoryId = sub?.categoryId ?? CategoryModel.expenseCategories.first.id;
     _frequency = sub?.frequency ?? SubscriptionFrequency.monthly;
   }
@@ -167,6 +169,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               if (_selectedWeekdays.isEmpty) {
                                 _selectedWeekdays = [DateTime.now().weekday];
                               }
+                              _allWeekdays = _selectedWeekdays.length == 7;
                             } else if (freq == SubscriptionFrequency.fortnightly) {
                               if (_dueDate < 1 || _dueDate > 15) _dueDate = 1;
                             } else if (freq == SubscriptionFrequency.monthly) {
@@ -221,55 +224,109 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                 if (_frequency != SubscriptionFrequency.daily) ...[
                   if (_frequency == SubscriptionFrequency.weekly) ...[
                     const Text(
-                      'Días de cobro semanal (estilo alarma):',
+                      'Días de cobro semanal:',
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     StatefulBuilder(
                       builder: (context, setDialogState) {
-                        const weekdaysNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-                        return Wrap(
-                          spacing: 6.0,
-                          runSpacing: 6.0,
-                          children: List.generate(7, (index) {
-                            final dayNum = index + 1;
-                            final isSelected = _selectedWeekdays.contains(dayNum);
-                            return FilterChip(
-                              label: Text(
-                                weekdaysNames[index],
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                                  color: isSelected 
-                                      ? theme.scaffoldBackgroundColor 
-                                      : theme.textTheme.bodyLarge?.color,
-                                ),
-                              ),
-                              selected: isSelected,
-                              onSelected: (selected) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            InkWell(
+                              onTap: () {
                                 setState(() {
-                                  if (selected) {
-                                    _selectedWeekdays.add(dayNum);
+                                  _allWeekdays = !_allWeekdays;
+                                  if (_allWeekdays) {
+                                    _selectedWeekdays = [1, 2, 3, 4, 5, 6, 7];
                                   } else {
-                                    if (_selectedWeekdays.length > 1) {
-                                      _selectedWeekdays.remove(dayNum);
-                                    }
+                                    _selectedWeekdays = [DateTime.now().weekday];
                                   }
                                 });
                                 setDialogState(() {});
                               },
-                              showCheckmark: false,
-                              selectedColor: theme.primaryColor,
-                              backgroundColor: theme.cardColor,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(4),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: Checkbox(
+                                        value: _allWeekdays,
+                                        activeColor: theme.primaryColor,
+                                        onChanged: (val) {
+                                          setState(() {
+                                            _allWeekdays = val ?? false;
+                                            if (_allWeekdays) {
+                                              _selectedWeekdays = [1, 2, 3, 4, 5, 6, 7];
+                                            } else {
+                                              _selectedWeekdays = [DateTime.now().weekday];
+                                            }
+                                          });
+                                          setDialogState(() {});
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Todos los días de la semana',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              side: BorderSide(
-                                color: isSelected ? theme.primaryColor : theme.dividerColor,
-                                width: 0.5,
+                            ),
+                            if (!_allWeekdays) ...[
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 6.0,
+                                runSpacing: 6.0,
+                                children: List.generate(7, (index) {
+                                  final dayNum = index + 1;
+                                  final isSelected = _selectedWeekdays.contains(dayNum);
+                                  return FilterChip(
+                                    label: Text(
+                                      ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'][index],
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                        color: isSelected 
+                                            ? theme.scaffoldBackgroundColor 
+                                            : theme.textTheme.bodyLarge?.color,
+                                      ),
+                                    ),
+                                    selected: isSelected,
+                                    onSelected: (selected) {
+                                      setState(() {
+                                        if (selected) {
+                                          _selectedWeekdays.add(dayNum);
+                                        } else {
+                                          if (_selectedWeekdays.length > 1) {
+                                            _selectedWeekdays.remove(dayNum);
+                                          }
+                                        }
+                                        _allWeekdays = _selectedWeekdays.length == 7;
+                                      });
+                                      setDialogState(() {});
+                                    },
+                                    showCheckmark: false,
+                                    selectedColor: theme.primaryColor,
+                                    backgroundColor: theme.cardColor,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    side: BorderSide(
+                                      color: isSelected ? theme.primaryColor : theme.dividerColor,
+                                      width: 0.5,
+                                    ),
+                                  );
+                                }),
                               ),
-                            );
-                          }),
+                            ],
+                          ],
                         );
                       }
                     ),
